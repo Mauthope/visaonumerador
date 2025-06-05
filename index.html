@@ -3,14 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reconhecimento de Números</title>
+  <title>Leitor de Números em Sequência</title>
   <style>
     video, canvas {
       width: 100%;
       max-width: 400px;
       border: 2px solid #444;
     }
-    #numeros { margin-top: 10px; font-size: 20px; }
+    #numeros {
+      margin-top: 10px;
+      font-size: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .numero {
+      padding: 5px 10px;
+      border-radius: 5px;
+      background: #eee;
+    }
+    .erro {
+      color: red;
+      font-weight: bold;
+    }
     footer {
       margin-top: 30px;
       font-size: 12px;
@@ -21,14 +36,13 @@
   </style>
 </head>
 <body>
-  <h2>Leitor de Números Crescentes</h2>
+  <h2>Leitor Automático de Números</h2>
   <video id="video" autoplay playsinline></video>
   <canvas id="canvas" style="display:none;"></canvas>
-  <button onclick="capturar()">Capturar Número</button>
   <div id="numeros"></div>
 
   <footer>
-    <p>Este aplicativo utiliza <a href="https://github.com/naptha/tesseract.js" target="_blank">Tesseract.js</a>, licenciado sob a <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank">Apache License 2.0</a>.</p>
+    <p>Este app usa <a href="https://github.com/naptha/tesseract.js" target="_blank">Tesseract.js</a> (Apache 2.0).</p>
     <p>© 2025 SeuNome. Todos os direitos reservados.</p>
   </footer>
 
@@ -50,29 +64,51 @@
       alert("Erro ao acessar câmera: " + err.message);
     });
 
-    function capturar() {
+    function processarFrame() {
+      if (video.readyState !== 4) return;
+
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
       Tesseract.recognize(canvas, 'eng', {
         logger: m => console.log(m)
       }).then(({ data: { text } }) => {
         const encontrados = text.match(/\d+/g);
         if (encontrados) {
-          encontrados.map(Number).sort((a, b) => a - b).forEach(num => {
+          encontrados.map(Number).forEach(num => {
             if (!numerosDetectados.includes(num)) {
-              const ultimo = numerosDetectados[numerosDetectados.length - 1];
-              if (ultimo !== undefined && num !== ultimo + 1) {
-                alert(`Número fora de sequência! Esperado: ${ultimo + 1}, mas veio: ${num}`);
-              }
               numerosDetectados.push(num);
+              atualizarSequencia();
             }
           });
         }
-        numerosDiv.textContent = "Números detectados: " + numerosDetectados.join(', ');
       });
     }
+
+    function atualizarSequencia() {
+      numerosDetectados.sort((a, b) => a - b);
+      numerosDiv.innerHTML = '';
+      let esperado = numerosDetectados[0];
+
+      numerosDetectados.forEach((num, index) => {
+        const span = document.createElement('span');
+        span.textContent = num;
+        span.classList.add('numero');
+
+        if (num !== esperado) {
+          span.classList.add('erro');
+          esperado = num; // reinicia do número novo
+        } else {
+          esperado++;
+        }
+
+        numerosDiv.appendChild(span);
+      });
+    }
+
+    // Processar a cada 2 segundos
+    setInterval(processarFrame, 2000);
   </script>
 </body>
 </html>
