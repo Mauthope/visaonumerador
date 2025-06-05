@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reconhecimento de Números</title>
+  <style>
+    video, canvas {
+      width: 100%;
+      max-width: 400px;
+      border: 2px solid #444;
+    }
+    #numeros { margin-top: 10px; font-size: 20px; }
+    footer {
+      margin-top: 30px;
+      font-size: 12px;
+      color: #555;
+      border-top: 1px solid #ccc;
+      padding-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Leitor de Números Crescentes</h2>
+  <video id="video" autoplay playsinline></video>
+  <canvas id="canvas" style="display:none;"></canvas>
+  <button onclick="capturar()">Capturar Número</button>
+  <div id="numeros"></div>
+
+  <footer>
+    <p>Este aplicativo utiliza <a href="https://github.com/naptha/tesseract.js" target="_blank">Tesseract.js</a>, licenciado sob a <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank">Apache License 2.0</a>.</p>
+    <p>© 2025 SeuNome. Todos os direitos reservados.</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.3/dist/tesseract.min.js"></script>
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const numerosDiv = document.getElementById('numeros');
+    const numerosDetectados = [];
+
+    // Inicia câmera traseira
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { exact: "environment" } },
+      audio: false
+    }).then(stream => {
+      video.srcObject = stream;
+    }).catch(err => {
+      alert("Erro ao acessar câmera: " + err.message);
+    });
+
+    function capturar() {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+
+      Tesseract.recognize(canvas, 'eng', {
+        logger: m => console.log(m)
+      }).then(({ data: { text } }) => {
+        const encontrados = text.match(/\d+/g);
+        if (encontrados) {
+          encontrados.map(Number).sort((a, b) => a - b).forEach(num => {
+            if (!numerosDetectados.includes(num)) {
+              const ultimo = numerosDetectados[numerosDetectados.length - 1];
+              if (ultimo !== undefined && num !== ultimo + 1) {
+                alert(`Número fora de sequência! Esperado: ${ultimo + 1}, mas veio: ${num}`);
+              }
+              numerosDetectados.push(num);
+            }
+          });
+        }
+        numerosDiv.textContent = "Números detectados: " + numerosDetectados.join(', ');
+      });
+    }
+  </script>
+</body>
+</html>
