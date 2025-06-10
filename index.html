@@ -8,7 +8,7 @@
     body {
       font-family: sans-serif;
       padding: 20px;
-      max-width: 900px;
+      max-width: 950px;
       margin: auto;
     }
     h1, h2 {
@@ -40,6 +40,13 @@
     }
     th {
       background-color: #f4f4f4;
+    }
+    .delete-btn {
+      background-color: #c62828;
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      cursor: pointer;
     }
     #exportBtn {
       margin-top: 10px;
@@ -88,6 +95,9 @@
     <label>Problemas visuais?
       <input type="text" id="visao" placeholder="Ex: visão turva, pontos, aura" />
     </label>
+    <label>Gatilhos possíveis:
+      <input type="text" id="gatilhos" placeholder="Ex: estresse, sono ruim, jejum" />
+    </label>
     <label>Observações:
       <textarea id="obs" rows="3"></textarea>
     </label>
@@ -105,7 +115,9 @@
         <th>Nimesulida</th>
         <th>Óculos</th>
         <th>Visão</th>
+        <th>Gatilhos</th>
         <th>Observações</th>
+        <th>Ações</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -129,10 +141,17 @@
       localStorage.setItem('crises', JSON.stringify(crises));
     }
 
+    function excluirEntrada(index) {
+      const crises = JSON.parse(localStorage.getItem('crises')) || [];
+      crises.splice(index, 1);
+      localStorage.setItem('crises', JSON.stringify(crises));
+      carregarCrises();
+    }
+
     function carregarCrises() {
       const crises = JSON.parse(localStorage.getItem('crises')) || [];
       tabela.innerHTML = '';
-      crises.forEach(c => {
+      crises.forEach((c, i) => {
         const row = tabela.insertRow();
         row.innerHTML = `
           <td>${c.data}</td>
@@ -142,7 +161,9 @@
           <td>${c.nimesulida}</td>
           <td>${c.oculos}</td>
           <td>${c.visao}</td>
+          <td>${c.gatilhos}</td>
           <td>${c.obs}</td>
+          <td><button class="delete-btn" onclick="excluirEntrada(${i})">Excluir</button></td>
         `;
       });
       desenharGrafico(crises);
@@ -150,9 +171,9 @@
 
     function exportarCSV() {
       const crises = JSON.parse(localStorage.getItem('crises')) || [];
-      let csv = 'Data,Turno,Intensidade,Naratriptano,Nimesulida,Óculos,Visão,Observações\n';
+      let csv = 'Data,Turno,Intensidade,Naratriptano,Nimesulida,Óculos,Visão,Gatilhos,Observações\n';
       crises.forEach(c => {
-        csv += `${c.data},${c.turno},${c.intensidade},${c.naratriptano},${c.nimesulida},${c.oculos},"${c.visao}","${c.obs}"\n`;
+        csv += `${c.data},${c.turno},${c.intensidade},${c.naratriptano},${c.nimesulida},${c.oculos},"${c.visao}","${c.gatilhos}","${c.obs}"\n`;
       });
 
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -164,15 +185,12 @@
     }
 
     function desenharGrafico(crises) {
-      // Contar crises por dia (data)
       const contagemDiaria = {};
       crises.forEach(c => {
-        // Para garantir formato yyyy-mm-dd
         contagemDiaria[c.data] = (contagemDiaria[c.data] || 0) + 1;
       });
 
-      // Ordenar datas
-      const labels = Object.keys(contagemDiaria).sort((a,b) => new Date(a) - new Date(b));
+      const labels = Object.keys(contagemDiaria).sort((a, b) => new Date(a) - new Date(b));
       const dados = labels.map(label => contagemDiaria[label]);
 
       if (grafico) grafico.destroy();
@@ -190,16 +208,8 @@
           scales: {
             y: {
               beginAtZero: true,
-              stepSize: 1,
               ticks: {
-                precision:0
-              }
-            }
-          },
-          plugins: {
-            tooltip: {
-              callbacks: {
-                label: ctx => `${ctx.parsed.y} crise(s)`
+                precision: 0
               }
             }
           }
@@ -217,15 +227,20 @@
         nimesulida: document.getElementById('nimesulida').value,
         oculos: document.getElementById('oculos').value,
         visao: document.getElementById('visao').value,
+        gatilhos: document.getElementById('gatilhos').value,
         obs: document.getElementById('obs').value
       };
       salvarNoLocalStorage(data);
       carregarCrises();
       form.reset();
-      document.getElementById('turno').selectedIndex = 0; // reset select placeholder
+      document.getElementById('turno').selectedIndex = 0;
     });
 
+    exportBtn.addEventListener('click', exportarCSV);
     carregarCrises();
+
+    // Expor função de exclusão para o escopo global
+    window.excluirEntrada = excluirEntrada;
   </script>
 </body>
 </html>
