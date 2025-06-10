@@ -28,6 +28,9 @@
       padding: 8px;
       font-size: 1rem;
     }
+    select[multiple] {
+      height: auto;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -96,7 +99,23 @@
       <input type="text" id="visao" placeholder="Ex: visão turva, pontos, aura" />
     </label>
     <label>Gatilhos possíveis:
-      <input type="text" id="gatilhos" placeholder="Ex: estresse, sono ruim, jejum" />
+      <select id="gatilhos" multiple size="6">
+        <option value="Estresse">Estresse</option>
+        <option value="Sono insuficiente">Sono insuficiente</option>
+        <option value="Sono em excesso">Sono em excesso</option>
+        <option value="Jejum">Ficar em jejum</option>
+        <option value="Menstruação">Menstruação</option>
+        <option value="Mudança hormonal">Mudança hormonal</option>
+        <option value="Alimentos específicos">Alimentos específicos</option>
+        <option value="Café ou abstinência de café">Café ou abstinência de café</option>
+        <option value="Mudanças climáticas">Mudanças climáticas</option>
+        <option value="Cheiros fortes">Cheiros fortes</option>
+        <option value="Luz intensa">Luz intensa</option>
+        <option value="Uso de telas">Uso de telas</option>
+        <option value="Barulhos altos">Barulhos altos</option>
+        <option value="Atividade física intensa">Atividade física intensa</option>
+        <option value="Desidratação">Desidratação</option>
+      </select>
     </label>
     <label>Observações:
       <textarea id="obs" rows="3"></textarea>
@@ -208,9 +227,7 @@
           scales: {
             y: {
               beginAtZero: true,
-              ticks: {
-                precision: 0
-              }
+              ticks: { precision: 0 }
             }
           }
         }
@@ -219,6 +236,7 @@
 
     form.addEventListener('submit', e => {
       e.preventDefault();
+      const gatilhosSelecionados = Array.from(document.getElementById('gatilhos').selectedOptions).map(opt => opt.value).join(', ');
       const data = {
         data: document.getElementById('data').value,
         turno: document.getElementById('turno').value,
@@ -227,7 +245,7 @@
         nimesulida: document.getElementById('nimesulida').value,
         oculos: document.getElementById('oculos').value,
         visao: document.getElementById('visao').value,
-        gatilhos: document.getElementById('gatilhos').value,
+        gatilhos: gatilhosSelecionados,
         obs: document.getElementById('obs').value
       };
       salvarNoLocalStorage(data);
@@ -239,7 +257,6 @@
     exportBtn.addEventListener('click', exportarCSV);
     carregarCrises();
 
-    // Expor função de exclusão para o escopo global
     window.excluirEntrada = excluirEntrada;
   </script>
 </body>
