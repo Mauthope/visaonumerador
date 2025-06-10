@@ -1,114 +1,212 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Leitor de Números em Sequência</title>
+  <meta charset="UTF-8">
+  <title>Diário de Enxaqueca</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    video, canvas {
-      width: 100%;
-      max-width: 400px;
-      border: 2px solid #444;
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      max-width: 900px;
+      margin: auto;
     }
-    #numeros {
-      margin-top: 10px;
-      font-size: 20px;
+
+    h1, h2 {
+      text-align: center;
+    }
+
+    form {
       display: flex;
-      flex-wrap: wrap;
+      flex-direction: column;
       gap: 10px;
+      margin-bottom: 20px;
     }
-    .numero {
-      padding: 5px 10px;
-      border-radius: 5px;
-      background: #eee;
+
+    label {
+      display: flex;
+      flex-direction: column;
     }
-    .erro {
-      color: red;
-      font-weight: bold;
+
+    input, select, textarea, button {
+      padding: 8px;
+      font-size: 1rem;
     }
-    footer {
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f4f4f4;
+    }
+
+    #exportBtn {
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #3e8e41;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    canvas {
+      max-width: 100%;
       margin-top: 30px;
-      font-size: 12px;
-      color: #555;
-      border-top: 1px solid #ccc;
-      padding-top: 10px;
     }
   </style>
 </head>
 <body>
-  <h2>Leitor Automático de Números</h2>
-  <video id="video" autoplay playsinline></video>
-  <canvas id="canvas" style="display:none;"></canvas>
-  <div id="numeros"></div>
+  <h1>Diário de Enxaqueca</h1>
 
-  <footer>
-    <p>Este app usa <a href="https://github.com/naptha/tesseract.js" target="_blank">Tesseract.js</a> (Apache 2.0).</p>
-    <p>© 2025 SeuNome. Todos os direitos reservados.</p>
-  </footer>
+  <form id="migraineForm">
+    <label>Data:
+      <input type="date" id="data" required>
+    </label>
+    <label>Intensidade (0-10):
+      <input type="number" id="intensidade" min="0" max="10" required>
+    </label>
+    <label>Usava óculos na hora?
+      <select id="oculos">
+        <option value="Sim">Sim</option>
+        <option value="Não">Não</option>
+      </select>
+    </label>
+    <label>Problemas visuais?
+      <input type="text" id="visao" placeholder="Ex: visão turva, pontos, aura">
+    </label>
+    <label>Observações:
+      <textarea id="obs" rows="3"></textarea>
+    </label>
+    <button type="submit">Salvar</button>
+  </form>
 
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.3/dist/tesseract.min.js"></script>
+  <h2>Crises Registradas</h2>
+  <table id="tabelaCrises">
+    <thead>
+      <tr>
+        <th>Data</th>
+        <th>Intensidade</th>
+        <th>Óculos</th>
+        <th>Visão</th>
+        <th>Observações</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <button id="exportBtn">Exportar para CSV</button>
+
+  <h2>Frequência Mensal</h2>
+  <canvas id="graficoCrises"></canvas>
+
   <script>
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const numerosDiv = document.getElementById('numeros');
-    const numerosDetectados = [];
+    const form = document.getElementById('migraineForm');
+    const tabela = document.querySelector('#tabelaCrises tbody');
+    const exportBtn = document.getElementById('exportBtn');
+    const graficoCanvas = document.getElementById('graficoCrises');
+    let grafico;
 
-    // Inicia câmera traseira
-    navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { exact: "environment" } },
-      audio: false
-    }).then(stream => {
-      video.srcObject = stream;
-    }).catch(err => {
-      alert("Erro ao acessar câmera: " + err.message);
+    function salvarNoLocalStorage(data) {
+      const crises = JSON.parse(localStorage.getItem('crises')) || [];
+      crises.push(data);
+      localStorage.setItem('crises', JSON.stringify(crises));
+    }
+
+    function carregarCrises() {
+      const crises = JSON.parse(localStorage.getItem('crises')) || [];
+      tabela.innerHTML = '';
+      crises.forEach(c => {
+        const row = tabela.insertRow();
+        row.innerHTML = `
+          <td>${c.data}</td>
+          <td>${c.intensidade}</td>
+          <td>${c.oculos}</td>
+          <td>${c.visao}</td>
+          <td>${c.obs}</td>
+        `;
+      });
+      desenharGrafico(crises);
+    }
+
+    function exportarCSV() {
+      const crises = JSON.parse(localStorage.getItem('crises')) || [];
+      let csv = 'Data,Intensidade,Óculos,Visão,Observações\n';
+      crises.forEach(c => {
+        csv += `${c.data},${c.intensidade},${c.oculos},"${c.visao}","${c.obs}"\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", "diario_enxaqueca.csv");
+      link.click();
+    }
+
+    function desenharGrafico(crises) {
+      const contagemMensal = {};
+      crises.forEach(c => {
+        const data = new Date(c.data);
+        const mesAno = `${data.getMonth() + 1}/${data.getFullYear()}`;
+        contagemMensal[mesAno] = (contagemMensal[mesAno] || 0) + 1;
+      });
+
+      const labels = Object.keys(contagemMensal).sort((a, b) => {
+        const [ma, aa] = a.split('/').map(Number);
+        const [mb, ab] = b.split('/').map(Number);
+        return new Date(aa, ma - 1) - new Date(ab, mb - 1);
+      });
+
+      const dados = labels.map(label => contagemMensal[label]);
+
+      if (grafico) grafico.destroy(); // remove gráfico anterior se já existir
+      grafico = new Chart(graficoCanvas, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Crises por Mês',
+            data: dados,
+            backgroundColor: '#ff6384'
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              stepSize: 1
+            }
+          }
+        }
+      });
+    }
+
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const data = {
+        data: document.getElementById('data').value,
+        intensidade: document.getElementById('intensidade').value,
+        oculos: document.getElementById('oculos').value,
+        visao: document.getElementById('visao').value,
+        obs: document.getElementById('obs').value
+      };
+      salvarNoLocalStorage(data);
+      carregarCrises();
+      form.reset();
     });
 
-    function processarFrame() {
-      if (video.readyState !== 4) return;
+    exportBtn.addEventListener('click', exportarCSV);
 
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      Tesseract.recognize(canvas, 'eng', {
-        logger: m => console.log(m)
-      }).then(({ data: { text } }) => {
-        const encontrados = text.match(/\d+/g);
-        if (encontrados) {
-          encontrados.map(Number).forEach(num => {
-            if (!numerosDetectados.includes(num)) {
-              numerosDetectados.push(num);
-              atualizarSequencia();
-            }
-          });
-        }
-      });
-    }
-
-    function atualizarSequencia() {
-      numerosDetectados.sort((a, b) => a - b);
-      numerosDiv.innerHTML = '';
-      let esperado = numerosDetectados[0];
-
-      numerosDetectados.forEach((num, index) => {
-        const span = document.createElement('span');
-        span.textContent = num;
-        span.classList.add('numero');
-
-        if (num !== esperado) {
-          span.classList.add('erro');
-          esperado = num; // reinicia do número novo
-        } else {
-          esperado++;
-        }
-
-        numerosDiv.appendChild(span);
-      });
-    }
-
-    // Processar a cada 2 segundos
-    setInterval(processarFrame, 2000);
+    carregarCrises();
   </script>
 </body>
 </html>
